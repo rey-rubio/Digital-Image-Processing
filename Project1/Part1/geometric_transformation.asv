@@ -183,17 +183,23 @@ figure
 imshow(I4);
 title('I4: Bilinear Interpolation');
 
+ 
 figure
 imshow(I4);
 title('I4: Filter');
 
-%figure
-%imshow(I8);
-%title('I8');
+figure
+imshow(I8);
+title('I8');
 
-I9 = zoomBilinear(I6, 0.25);
+I9 = zoomBilinear(I6, 2.5);
 imshow(I9);
 title('I9: Zoomed');
+
+figure
+I6 = double(I1)/255.0;
+imshow(I6);
+title('I6: Original Image w/ fp')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  BILINEAR INTERPOLATION
@@ -210,7 +216,7 @@ end
  
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  USING THE CONVOLUTION INTERPOLATION FILTER (GAUSSIAN)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
@@ -247,11 +253,11 @@ function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
     F = sum;
 end
 
-function Z = zoomNearestNeighbor(img, sLength, sWidth)
+function Z = imgZoom(img, sLength, sWidth)
 
-    scale = [sLength sWidth];
-    prevSize = size(img);       
-    newSize = max(floor(scale.*oldSize(1:2)),1);
+    scale = [sLength sWidth];                       % scale scaletors: [sLength sWidth]
+    prevSize = size(img);                            % prev image size       
+    newSize = max(floor(scale.*oldSize(1:2)),1);    % new image size
 
     r = min(round(((1:newSize(1))-0.5)./scale(1)+0.5),oldSize(1));
     c = min(round(((1:newSize(2))-0.5)./scale(2)+0.5),oldSize(2));
@@ -263,17 +269,93 @@ function Z = zoomNearestNeighbor(img, sLength, sWidth)
 end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  ZOOM IN/OUT with BILINEAR INTERPOLATION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Z = imgZoomBilinear(img,scale)
+
+    [r,c]=size(img);
+    for i=1:r
+        for j=1:c
+          zimg(1+(i-1)*scale,1+(j-1)*scale,:)= img(i,j,:);
+        end
+    end
+    
+    for i=1:1+(r-2)*scale     %row number
+        for j=1:1+(c-2)*scale %column number
+
+           if ((rem(i-1,scale)==0) && (rem(j-1,scale)==0)) % maped values from the original picture should not be recalculated.     
+           else  %for pixels that should be calculated.
+               h00=zimg( ceil(i/scale)*scale-scale+1,ceil(j/scale)*scale-scale+1,:); %nearest four known pixels for the pixel being calculated.
+               h10=zimg( ceil(i/scale)*scale-scale+1+scale,ceil(j/scale)*scale-scale+1,:);
+               h01=zimg( ceil(i/scale)*scale-scale+1,ceil(j/scale)*scale-scale+1+scale,:);
+               h11=zimg( ceil(i/scale)*scale-scale+1+scale,ceil(j/scale)*scale-scale+1+scale,:);
+
+               x=rem(i-1,scale); %coordinates of calculating pixel.
+               y=rem(j-1,scale);  
+
+               dx=x/scale; %localizeing the  pixel being calculated to the nearest four know pixels.
+               dy=y/scale;
+
+               b1=h00;    %constants of bilinear interpolation.
+               b2=h10-h00;
+               b3=h01-h00;
+               b4=h00-h10-h01+h11;           
+               zimg(i,j,:)=b1+b2*dx+b3*dy+b4*dx*dy; %equation of bilinear interpolation.
+             end
+        end
+    end
+    Z = zimg;
+end
+
+
+
+function Z = bilinear_zoom(img,scale)
+    
+    im=cast(img,'int16'); 
+    %imshow(cast(im,'uint8'));
+    [r,c,d]=size(im);
+    for i=1:r
+        for j=1:c
+          zimg(floor((1+(i-1)*scale)),floor((1+(j-1)*scale)),:) = im(i,j,:);
+        end     
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %  BILINEAR INTERPOLATION
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    for i = 1 : 1+(r-2) * scale
+        for j = 1 : 1+(c-2) * scale
+
+           if ( (rem(i-1,scale) ~= 0) && (rem(j-1,scale) ~= 0) ) 
+               q11=zimg( ceil(i/scale) * scale-scale+1,         ceil(j/scale)*scale-scale+1,        :);
+               q21=zimg( ceil(i/scale) * scale-scale+1+scale,   ceil(j/scale)*scale-scale+1,        :);
+               q12=zimg( ceil(i/scale) * scale-scale+1,         ceil(j/scale)*scale-scale+1+scale,  :);
+               q22=zimg( ceil(i/scale) * scale-scale+1+scale,   ceil(j/scale)*scale-scale+1+scale,  :);
+
+               x = rem(i-1,scale);
+               y = rem(j-1,scale);  
+
+               dx = x / scale; 
+               dy = y / scale;
+
+               b1 = q11;
+               b2 = q21 - q11;
+               b3 = q12 - q11;
+               b4 = q11 - q21 - q12 + q22;           
+               zimg(i,j,:) = (b1 + b2 * dx)+ (b3*dy) + (b4*dx*dy); 
+           end
+        end
+        imshow(cast(zimg,'uint8'));
+    end
+    Z = zimg;
+end
+
+
 function Z = zoomBilinear(img, scale)
-    [r, c , ~] = size(img);  
+    [r c d] = size(img);  
     zr = r * scale ;
     zc = c * scale;
 
     for i = 1 : zr
 
-        x = i / scale;
+        x = i/scale;
 
         x1 = floor(x);
         x2 = ceil(x);
@@ -282,14 +364,14 @@ function Z = zoomBilinear(img, scale)
         end
         xrem = rem(x,1);
         
-        for j = 1 : zc
+        for j=1:zc
 
-            y= j / scale;
+            y=j/scale;
 
-            y1 = floor(y);
-            y2 = ceil(y);
-            if y1 == 0
-                y1 = 1;
+            y1=floor(y);
+            y2=ceil(y);
+            if y1==0
+                y1=1;
             end
             yrem = rem(y,1);
 
@@ -298,13 +380,13 @@ function Z = zoomBilinear(img, scale)
             q21 = img(x2,y1,:);
             q22 = img(x2,y2,:);
 
-            f_xy1 = q21 * yrem + q11 * (1 - yrem);
-            f_xy2 = q22 * yrem + q12 * (1 - yrem);
+            R1 = q21*yrem+q11*(1-yrem);
+            R2 = q22*yrem+q12*(1-yrem);
 
-            z_img(i,j,:) = (f_xy1 * xrem) + (f_xy2 *(1 - xrem));
+            im_zoom(i,j,:)=R1*xrem+R2*(1-xrem);
         end
     end
-    Z = z_img;
+    Z = im_zoom;
 
 end
 %pause   %type return to continue      
