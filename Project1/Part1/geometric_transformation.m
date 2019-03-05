@@ -4,32 +4,31 @@
 % ESE 558 
 % SPRING 2019
 % 03/05/2019
+% 
+% GEOMETRIC TRANSFORMATION OF IMAGES
 %
-%    GEOMETRIC TRANSFORMATION OF IMAGES
-%
-%    Affine transform and translation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Read an RGB image color image 'food1.jpg'.
+% Read an RGB image color image in images folder,  'images/food1.jpg'.
 
 I1 = imread('images/food1.jpg');
 [M, N, C] = size(I1);   % M: Num. of Rows , 
                         % N : Num. of Columns , 
                         % C : Num. of color bands = 3
 
-figure
-imshow(I1);
-title('I1: Original Image');
+%figure
+%imshow(I1);
+%title('I1: Original Image');
 
 figure
 I6 = double(I1)/255.0;
 imshow(I6);
 title('I6: Original Image w/ fp')
 
-figure
+%figure
 I2 = rgb2gray(I1);
-imshow(I2);
-title('I2: Grayscale');
+%imshow(I2);
+%title('I2: Grayscale');
  
 figure
 I7 = double(I2)/255.0;
@@ -49,15 +48,12 @@ title('I7: Grayscale w/ fp');
 %
 % Test input is for rotation , scaling x-axis, and translation T
 %
-theta=60.0;
-A = [ 0.5 * cosd(theta) -sind(theta)
+theta=30;
+A = [  cosd(theta) -sind(theta)
       sind(theta)  cosd(theta) ];
-
-%A = [ .25 2
-%     2  .25 ];
     
+%T = [ 10 5 ]'; % change this for translations
 T = [ 10 5 ]'; % change this for translations
- 
 % In Affine transform, straight lines map to 
 % straight lines. 
 % Therefore, first map corner points (1,1),
@@ -134,7 +130,7 @@ for i = xmin : xmax
                 % Interpolate for each RGB channels separately 
                 % (c: 1 = red, 2 = green, 3 = blue)
                 for c = 1:C
-                    I4(x,y,c) = bilinear(I6, x0, y0, minx, maxx, miny, maxy, c);
+                    I4(x,y,c) = bilinearInterpolation(I6, x0, y0, minx, maxx, miny, maxy, c);
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,10 +191,32 @@ I9 = zoomBilinear(I6, 0.25);
 imshow(I9);
 title('I9: Zoomed');
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  BILINEAR INTERPOLATION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function B = bilinear(img, x0, y0, minx, maxx, miny, maxy, c)
+I10 = rotate(I6, 250, 200, 60);
+imshow(I10);
+title('I10: Rotated');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   bilinearInterpolation(img, x0, y0, minx, maxx, miny, maxy, c)
+%
+% Description:
+%   Scales image by factor "scale" using bilinear
+%   interpolation.
+%
+% Parameters:
+%   img:    image to be sampled
+%   x0:     x coordinate to find value for interpolation            
+%   y0:     y coordinate to find value for interpolation    
+%   minx:	minimum x value in this iteration of interpolation
+%   maxx:	maximum x value in this iteration of interpolation
+%   miny:	minimum y value in this iteration of interpolation
+%   maxy:	maximum y value in this iteration of interpolation
+%   c:      color band (c: 1 = red, 2 = green, 3 = blue)
+%
+% Output:
+%   B:  imaged sampled with bilinear interpolation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function B = bilinearInterpolation(img, x0, y0, minx, maxx, miny, maxy, c)
     s1 = img(minx, miny, c);
     s2 = img(minx, maxy, c); 
     s3 = img(maxx, miny, c);
@@ -213,6 +231,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  USING THE CONVOLUTION INTERPOLATION FILTER (GAUSSIAN)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
     normalization_scaletor = 0.0;
     sum = 0.0;
@@ -247,25 +266,21 @@ function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
     F = sum;
 end
 
-function Z = zoomNearestNeighbor(img, sLength, sWidth)
-
-    scale = [sLength sWidth];
-    prevSize = size(img);       
-    newSize = max(floor(scale.*oldSize(1:2)),1);
-
-    r = min(round(((1:newSize(1))-0.5)./scale(1)+0.5),oldSize(1));
-    c = min(round(((1:newSize(2))-0.5)./scale(2)+0.5),oldSize(2));
-
-    %# Index old image to get new image:
-
-    Z = img(r,c,:);
-
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  ZOOM IN/OUT with BILINEAR INTERPOLATION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   zoomBilinear(img, scale)
+%
+% Description:
+%   Scales image by factor "scale" using bilinear
+%   interpolation.
+%
+% Parameters:
+%   img:    image to be scaled
+%   scale:	value to scale image by 
+%
+% Output:
+%   Z = zoomed/scaled image
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Z = zoomBilinear(img, scale)
     [r, c , ~] = size(img);  
     zr = r * scale ;
@@ -307,5 +322,40 @@ function Z = zoomBilinear(img, scale)
     Z = z_img;
 
 end
-%pause   %type return to continue      
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name: 
+%   rotate(img, xr, yr, theta)
+%
+% Description:
+%   Rotates given image around a center of rotation (xr,yr)
+%   and given andle of rotation theta.
+%
+% Parameters:
+%   img:    image array to be rotated
+%   xr:     x point in center of rotation
+%   yr:     y point in center of rotation
+%   theta:	angle of rotation  
+%
+% Output:
+%   R = rotated image
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function R = rotate(img, xr, yr, theta)
+    [r, c , d] = size(img);  
+    rotatedImage = zeros(r,c,d);
+     for i = 1:r
+         xvalue = i - xr;
+         for j = 1:c
+             yvalue = j - yr;
+
+             y = round(( xvalue*cos(theta) + yvalue*sin(theta))) + xr;
+             x = round((-xvalue*sin(theta) + yvalue*cos(theta))) + yr;
+
+             if (x >= 1 && y >= 1 && x <= c && y <= r)
+                 rotatedImage(i, j,:) = img(x,y,:);
+             end
+         end
+     end
+     R = rotatedImage;
+end
+
 
