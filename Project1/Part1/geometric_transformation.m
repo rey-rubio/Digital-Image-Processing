@@ -3,7 +3,7 @@
 % ID# 109899097
 % ESE 558 
 % SPRING 2019
-% 03/05/2019
+% 03/04/2019
 % 
 % GEOMETRIC TRANSFORMATION OF IMAGES
 %
@@ -48,10 +48,11 @@ title('I7: Grayscale w/ fp');
 %
 % Test input is for rotation , scaling x-axis, and translation T
 %
-theta=30;
+theta=5;
 A = [  cosd(theta) -sind(theta)
-      sind(theta)  cosd(theta) ];
-    
+     sind(theta)  cosd(theta) ];
+% A = [  1 0
+%       0  1 ];    
 %T = [ 10 5 ]'; % change this for translations
 T = [ 10 5 ]'; % change this for translations
 % In Affine transform, straight lines map to 
@@ -142,31 +143,18 @@ for i = xmin : xmax
             %  approximation which is small if the farthest weights of the 
             %  filter are relatively small near its border. 
             %
-            % Coordinates of sample points for convolution filter 
-            %  interpolation of size 2k+1 X 2k+1 are (xn+m1,yn+n1,:) below.
-            %
-            sigma = 1.00;
+            sigma = 1.0;
             k = 2;
-            %new output ImagePixelValue at(x,y):  I4(x,y,:) = sum;
             % Filter for each RGB channels separately 
             % (c: 1 = red, 2 = green, 3 = blue)
-            %I5 = I4;
              % Check Bounds for sample points
             if ((1 <= minx) && (maxx <= M) && (1 <= miny) && (maxy <= N))
+                % Interpolate for each RGB channels separately 
+                % (c: 1 = red, 2 = green, 3 = blue)
                 for c = 1:C
-                    %I4(x,y,c) = filter(I6, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c);
+                    I5(x,y,c) = filter(I6, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c);
                 end
             end
-            % NEAREST NEIGHBOR INTERPOLATION
-            % copy the values of nearest pixel
-            %I4(x,y,1)= I6(xn,yn,1);
-            %I4(x,y,2)= I6(xn,yn,2);
-            %I4(x,y,3)= I6(xn,yn,3);
-            
-            %I8(x,y)=I7(xn,yn);
-            %I8(x,y)=I7(xn,yn);
-            %I8(x,y)=I7(xn,yn);
-            
         end
     end
 end
@@ -180,28 +168,30 @@ imshow(I4);
 title('I4: Bilinear Interpolation');
 
 figure
-imshow(I4);
-title('I4: Filter');
+imshow(I5);
+title('I5: Normalized Gaussian Filter');
 
 %figure
 %imshow(I8);
 %title('I8');
 
+
+figure
 I9 = zoomBilinear(I6, 0.25);
 imshow(I9);
-title('I9: Zoomed');
+title('I9: Zoomed (0.25)');
 
-I10 = rotate(I6, 250, 200, 60);
+figure
+I10 = rotate(I6, 150, 5, 70);
 imshow(I10);
-title('I10: Rotated');
+title('I10: Rotated 150, 5) @ 70°');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function name:   
 %   bilinearInterpolation(img, x0, y0, minx, maxx, miny, maxy, c)
 %
 % Description:
-%   Scales image by factor "scale" using bilinear
-%   interpolation.
+%   Scales image by factor "scale" using bilinear interpolation.
 %
 % Parameters:
 %   img:    image to be sampled
@@ -214,7 +204,7 @@ title('I10: Rotated');
 %   c:      color band (c: 1 = red, 2 = green, 3 = blue)
 %
 % Output:
-%   B:  imaged sampled with bilinear interpolation
+%   B:  sampled point with bilinear interpolation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function B = bilinearInterpolation(img, x0, y0, minx, maxx, miny, maxy, c)
     s1 = img(minx, miny, c);
@@ -231,9 +221,30 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  USING THE CONVOLUTION INTERPOLATION FILTER (GAUSSIAN)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%  filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
+%
+% Description:
+%   USING THE CONVOLUTION INTERPOLATION FILTER (GAUSSIAN)
+%   interpolation.
+%
+% Parameters:
+%   img:    image to be sampled
+%   x0:     x coordinate to find value for interpolation            
+%   y0:     y coordinate to find value for interpolation    
+%   minx:	minimum x value in this iteration of interpolation
+%   maxx:	maximum x value in this iteration of interpolation
+%   miny:	minimum y value in this iteration of interpolation
+%   maxy:	maximum y value in this iteration of interpolation
+%   c:      color band (c: 1 = red, 2 = green, 3 = blue)
+%
+% Output:
+%   B:  sampled point with bilinear interpolation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
-    normalization_scaletor = 0.0;
+    
+    % compute filter coefficients
     sum = 0.0;
     for m1 = -k : k
         for n1 = -k : k
@@ -241,18 +252,18 @@ function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
             % make sure the indices are within bounds. If they are 
             % not within image bounds, then set the filter coeff 
             % below to zero (and do not add that weight in 
-            % computing the normalization_scaletor.
-             filterCoeff = 0.0;
+            % computing the normalization_factor.
              xs = xn-m1; % filter sample x point
-             ys = yn-n1;% filter sample y point
+             ys = yn-n1; % filter sample y point
              if(xs >= minx  && xs <= maxx && ys >= miny && ys <= maxy)
                  
                 sampleValue = img(xs,ys,c); % get sample value 
                 
                 % make sure the indices are within bounds
                 %if(m1-xc > minx  && m1-xc < maxx && n1-yc > miny && n1-yc < maxy)
-                filterCoeff = (sigma/normalization_scaletor) * h((m1-xc),(n1-yc)); 
-                % normalization scaletor is the sum of 
+                %filterCoeff = (sigma/normalization_factor) * img((m1-xc),(n1-yc)); 
+                filterCoeff = (1.0) * gaussian_filter((m1-xc),(n1-yc), sigma); 
+                % normalization factor is the sum of 
                 % all those filter coeffs for which
                 % sample I6(xn-m1,yn-n1,:) is available (within the
                 % image) of 
@@ -260,11 +271,45 @@ function F = filter(img, sigma, k, xn, yn, xc, yc, minx, maxx, miny, maxy, c)
                  sum = sum +(filterCoeff * sampleValue);
                 %end
              end
-             normalization_scaletor = normalization_scaletor + filterCoeff;
          end
     end
+    % Normalize the Coefficients
+    normalization_factor = sum;
+    sum = 0.0;
+    for m1 = -k : k
+        for n1 = -k : k
+             xs = xn-m1; % filter sample x point
+             ys = yn-n1; % filter sample y point
+             if(xs >= minx  && xs <= maxx && ys >= miny && ys <= maxy)
+                sampleValue = img(xs,ys,c);
+                filterCoeff = (1.0/normalization_factor) * gaussian_filter((m1-xc),(n1-yc), sigma); 
+                sum = sum +(filterCoeff * sampleValue);
+             end
+         end
+    end   
     F = sum;
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   gaussian_filter(x, y, sigma)
+%
+% Description:
+%   Calculates guassian interpolation filter for given (x,y)  and sigma.
+%
+% Parameters:
+%   x:      x coordinate to calculate gaussian
+%   y:      y coordinate to calculate gaussian
+%   sigma:  sigma value for gaussian
+%
+% Output:
+%   h = calculated gaussian value
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function h = gaussian_filter(x, y, sigma)
+    h = (1 / (2 * pi * sigma*sigma )) * (exp(-(x*x + y*y) / (2*sigma*sigma)));
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function name:   
@@ -322,6 +367,8 @@ function Z = zoomBilinear(img, scale)
     Z = z_img;
 
 end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function name: 
 %   rotate(img, xr, yr, theta)
@@ -357,5 +404,4 @@ function R = rotate(img, xr, yr, theta)
      end
      R = rotatedImage;
 end
-
 
