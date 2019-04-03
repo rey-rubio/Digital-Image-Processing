@@ -11,9 +11,9 @@
 
 % Read an RGB image color image in images folder,  'images/food1.jpg'.
 
-IMG0 = imread('images/mona-lisa.png');
-%IMG0 = imread('images/food1.jpg');
-[M, N, C] = size(IMG0);     % M: Num. of Rows , 
+%IMG0 = imread('images/mona-lisa.png');
+IMG0 = imread('images/food1.jpg');
+%[M, N, C] = size(IMG0);     % M: Num. of Rows , 
                             % N : Num. of Columns , 
                             % C : Num. of color bands = 3
 figure
@@ -25,115 +25,102 @@ title("IMG0: Original Image");
 % imshow(I6);
 % title('I6: Original Image w/ fp')
 
-figure
+% figure
 IMG1= rgb2gray(IMG0);
-imshow(IMG1);
-title("IMG1: Grayscale");
+% imshow(IMG1);
+% title("IMG1: Grayscale");
  
 figure
 IMG1fp = double(IMG1)/255.0;
 imshow(IMG1fp);
 title("IMG1fp: Grayscale w/ fp");
  
-% change this matrix A for different rotation, scaling, 
-% and affine transformation
- 
-% Affine transform matrix A
-% This specifies the transformation that the input image
-% must undergo to form the output image
-% General form is
-%
-% A  = [ a11  a12
-%       a21   a22 ]
-%
-% Test input is for rotation , scaling x-axis, and translation T
-%
-theta=0;
-A = [  cosd(theta) -sind(theta)
-     sind(theta)  cosd(theta) ];
-% A = [  1 0
-%       0  1 ];    
-%T = [ 10 5 ]'; % change this for translations
-T = [ 0 0 ]'; % change this for translations
-% In Affine transform, straight lines map to 
-% straight lines. 
-% Therefore, first map corner points (1,1),
-% (M,1), (1,N), and (M,N)
- 
-p = A * [ 1 1 ]' + T; % first corner point
-x1=p(1);
-y1=p(2);
-p= A * [ 1 N ]' + T; % second corner point
-x2=p(1);
-y2=p(2);
-p= A * [ M 1 ]' + T; % third corner point
-x3=p(1);
-y3=p(2);
-p= A * [ M N ]' + T; % fourth corner point
-x4=p(1);
-y4=p(2);
- 
-% Determine background image size (excluding translation)
-xmin = floor( min( [ x1 x2 x3 x4 ] ));
-xmax = ceil( max( [ x1 x2 x3 x4 ] ));
-ymin = floor(min( [ y1 y2 y3 y4 ] ));
-ymax = ceil(max( [ y1 y2 y3 y4 ] ));
-Mp=ceil(xmax-xmin)+1; % number of rows
-Np=ceil(ymax-ymin)+1; % number of columns
- 
-I8=zeros(Mp,Np); % output gray scale image
- 
-% I4=zeros(Mp,Np,3); % output color image
-% I5=zeros(Mp,Np,3); % output color image 
-% We need to map position of output image pixels
-% to a position in the input image. Therefore, find the
-% inverse map.
- 
- 
-
-% figure
-% imshow(I8);
-% title('I8');
-
 figure
 S = 5;
-IMG2a = medianfilter(IMG1fp, S);
+IMG2a = MF(IMG1fp, S);
 imshow(IMG2a);
 title(sprintf("IMG2a: Median Filter, %dx%d", S, S));
-
+% 
 figure
 S = 3;
 K = 4;
-IMG2b = knearestneighbor(IMG1fp, S, K);
+IMG2b = KNN(IMG1fp, S, K);
 imshow(IMG2b);
 title(sprintf("IMG2b: %dx%d K-Nearest Neighbors,  K = %d", S, S, K));
 
+%figure
+min = 0.0; 
+max = 100.0;
+M = 8;
+N = 10;
+f = generate2D(M, N, min, max);
+%imshow(f);
+%title("f(m,n): INPUT image General Linear Transform");
+
+
+%figure
+huvmn = generate4D(M, N, min, max);
+IMG3a = GLT(f,huvmn);
+%imshow(IMG3a);
+%title("IMG3a: General Linear Transform (GLT)");
+
+%figure
+h1um = generate2D(M, M, min, max);
+h2vn = generate2D(N, N, min, max);
+IMG3b = SLT(f,h1um, h2vn);
+%imshow(IMG3b);
+%title("IMG3b: Separable Linear Transform (SLT)");
+
+
+%figure
+hcmn = generate2D(M, N, min, max);
+IMG3c = CLT(f,hcmn);
+%imshow(IMG3c);
+%title("IMG3c: Circular Linear Transform (CLT)");
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% figure
+h1cm = generate1D(M, min, max);
+h2cn = generate1D(N, min, max);
+IMG3d = SCT(f,h1cm,h2cm);
+% imshow(IMG3d);
+% title("IMG3d: Separable Convolution linear transform (SCT)");
+
+figure
+r = 5;
+IMG4 = SDLF(IMG1fp,r);
+imshow(IMG4)
+title(sprintf("IMG4: Spatial domain linear filtering ,  r = %d", r));
+
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function name:   
-%   medianfilter(img, S)
+%   MF(f, S)
 %
 % Description:
 %   Computes edge-preserving noise smoothing using SxS Median Filter
 %
 % Parameters:
-%   img:        image to be filtered
-%   S:          filter size
+%   f:           image to be filtered
+%   S:           filter size
 %
 % Output:
-%   MedFilter:  SxS Median filtered image
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function MF = medianfilter(img, S)
-    [M, N] = size(img);     % M: Num. of Rows
-                            % N: Num. of Columns 
+%   g:           g[m][n] SxS Median filtered image
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = MF(f, S)
+    [M, N] = size(f);     % M: Num. of Rows
+                          % N: Num. of Columns 
     P = floor(S / 2); 
     Q = floor(S / 2);                        
     total = (2*P+1)*(2*Q+1);
     med = zeros(1, total);
-    for m = 1:M     % each row of input 
-        for n = 1:N % each column of input 
+    for m = 1:M         % each row of input 
+        for n = 1:N     % each column of input 
             r = 1;      % index for med[]
             for p = -P:P
                 pval = (m - p);
@@ -158,44 +145,43 @@ function MF = medianfilter(img, S)
                         l = qval;
                     end    
                   
-                    point = img(k,l);
+                    point = f(k,l);
                     med(r) = point;
                     r = r + 1;
                 end 
             end
-            %sort(med);
-            MF(m,n) = median(med);
-            %MF(m,n) = med(round(total/2));
+            g(m,n) = median(med);
         end
     end         
 end
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function name:   
-%   knearestneighbor(img, S, K)
+%   knn(f, S, K)
 %
 % Description:
 %   Computes edge-preserving noise smoothing using SxS K-Nearest Neighbor
 %
 % Parameters:
-%   img:    image to be filtered
-%   S:      filter size (SxS)
-%   K:      value for number of neighbors
+%   f:       image to be filtered
+%   S:       filter size (SxS)
+%   K:       value for number of neighbors
 %
 % Output:
-%   KNN:    an SxS k nearest neighbor filtered image	
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function KNN = knearestneighbor(img, S, K)
-    [M, N] = size(img);     % M: Num. of Rows , 
+%   g:    g[m][n] an SxS k nearest neighbor filtered image	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = KNN(f, S, K)
+    [M, N] = size(f);     % M: Num. of Rows , 
                             % N: Num. of Columns 
     P = floor(S / 2); 
     Q = floor(S / 2);                        
     total = (2*P+1)*(2*Q+1);
     centerindex = 2*P+1;
     neighbors = zeros(1, total);
-    distance = zeros(1, total);
+    distances = zeros(1, total);
     for m = 1:M     % each row of input 
         for n = 1:N % each column of input 
             r = 1;      % index for neighbors[]
@@ -222,41 +208,362 @@ function KNN = knearestneighbor(img, S, K)
                         l = qval;
                     end    
                     
-                    center = img(m,n);
-                    point = img(k,l);
+                    center = f(m,n);
+                    point = f(k,l);
                     neighbors(r) = point;
-                    distance(r) = abs(point - center);
+                    distances(r) = abs(point - center);
                     r = r + 1;
                 end 
             end
             
             % don't include center index when finding K smallest distances
-            %distance(centerindex) =[];
-            [~, kindex] = mink(distance,K+1);
+            [~, kindex] = mink(distances,K+1);
             
             mean = 0;
             for i = 1:K+1
                meanindex = kindex(i);
-               % adjust indexes after deleted center index
+                % don't include center index
                if(meanindex ~= centerindex)
-                   %meanindex = meanindex + 1;
                    mean = mean + neighbors(meanindex);
                end
-               
             end
             mean = mean / K;
-            KNN(m,n) = mean;
-%             for k = 1:K
-%                 
-%                 MF(m,n) = neighbors(round(total/2));
+            g(m,n) = mean;
         end
     end         
 end
 
 
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   GLT(f, h)
+%
+% Description:
+%   Computes General (shift-variant) linear transform (GLT):
+%
+% Parameters:
+%   f:       input image f[m][n]
+%   h:       input filter h[u][v][m][n]
+%
+% Output:
+%   GLT:     g[u][v] general (shift-variant) linear transform (GLT) :
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = GLT(f, h)
+    [M, N] = size(f);       % M: Num. of Rows
+                            % N: Num. of Columns 
+    for u = 1:M         
+        for v = 1:N
+            sum = 0.0;
+            for m = 1:M
+                for n = 1:N
+                    sum = sum + h(u,v,m,n) * f(m,n);
+                end
+            end
+            g(u,v) = sum;
+        end
+    end         
+end
 
 
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   SLT(f, h1, h2)
+%
+% Description:
+%   Computes the separable linear transform (SLT):
+%
+% Parameters:
+%   f:       f[m][n] input image
+%   h1:      h[u][m] input filter
+%   h2:      h[v][n] input filter
+%
+% Output:
+%   g:       g[u][v] Separable linear transform (SLT)
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = SLT(f, h1, h2)
+    [M, N] = size(f);       % M: Num. of Rows
+                            % N: Num. of Columns 
+    
+    % calculate g1[m][v]
+    for m = 1:M
+        for v = 1:N
+            sum = 0.0;
+            for n = 1:N
+                sum = sum + h2(v,n)*f(m,n);
+            end
+            g1(m,v) = sum;
+        end
+    end
+    
+    % calculate g[u][v]
+    for u = 1:M
+        for v = 1:N
+            sum = 0.0;
+            for m = 1:M
+                sum = sum + h1(u,m) * g1(m,v);
+            end
+            g(u,v) = sum;
+        end
+    end
+end
 
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   CLT(f, h)
+%
+% Description:
+%   Computes the convolution l (linear shift-invariant) transform:
+%
+% Parameters:
+%   f:       f[m][n] input image
+%   h:       hc[m][n] input filter
+%
+% Output:
+%   g:       g[u][v] Convolution (linear shift-invariant) transform: CLT
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = CLT(f, h)
+    [M, N] = size(f);       % M: Num. of Rows
+                            % N: Num. of Columns 
+     for u = 1:M         
+        for v = 1:N
+            sum = 0.0;
+            for m = 1:M
+                for n = 1:N
+                    row = mod((u-m+M),M) + 1;
+                    col = mod((v-n+N),N) + 1;
+                    sum = sum + h(row, col) * f(m,n);
+                end
+            end
+            g(u,v) = sum;
+        end
+    end
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   SCT(f, h1c, h2c)
+%
+% Description:
+%   Computes the separable convolution linear transform (SCT):
+%
+% Parameters:
+%   f:        f[m][n] input image
+%   h1c:      h[m] input filter
+%   h2c:      h[n] input filter
+%
+% Output:
+%   g:       g[u][v] separable convolution linear transform (SCT)
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = SCT(f, h1c, h2c)
+    [M, N] = size(f);       % M: Num. of Rows
+                            % N: Num. of Columns 
+                            
+    % calculate g1[m][v]
+    for m = 1:M
+        for v = 1:N
+            sum = 0.0;
+            for n = 1:N
+                index = mod((v-n+N),N) + 1;
+                sum = sum + h2c(index)*f(m,n);
+            end
+            g1(m,v) = sum;
+        end
+    end                   
+    
+    % calculate g[u][v]
+    for u = 1:M
+        for v = 1:N
+            sum = 0.0;
+            for m = 1:M
+                index = mod((u-m+M),M) + 1;
+                sum = sum + h1c(index) * g1(m,v);
+            end
+            g(u,v) = sum;
+        end
+    end
+            
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   SDLF(f, r)
+%
+% Description:
+%   Computes the computing the blurred image of a planar object by adding 
+%   different levels of Gaussian independent noise. 
+%
+% Parameters:
+%   f:       f[m][n] input image
+%   r:       radius of filter
+%
+% Output:
+%   g:       g[m][n] Spatial domain linear filtered image
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function g = SDLF(f, r)
+    [M, N] = size(f);     % M: Num. of Rows
+                          % N: Num. of Columns 
+    P = r;
+    Q = r;                
+    sigma = 1.0;
+    for m = 1:M         % each row of input 
+        for n = 1:N     % each column of input 
+            sum = 0.0;
+            for p = -P:P
+                pval = (m - p);
+                if(pval < 0)
+                    k = abs(pval);
+                elseif(pval > M-1)
+                    k = M-1-(pval-(M-1));
+                elseif(pval == 0)
+                    k = 1;
+                else
+                    k = pval;
+                end
+                for q = -Q:Q
+                    qval = (n - q);
+                    if(qval < 0)
+                        l = abs(qval);
+                    elseif(qval > N-1)
+                        l = N-1-(qval-(N-1));
+                    elseif(qval == 0)
+                        l = 1;
+                    else
+                        l = qval;
+                    end    
+                    
+                    sum = sum + gaussian_filter(p,q,sigma) * f(k,l);
+                end 
+            end
+            g(m,n) = sum;
+        end
+    end         
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   gaussian_filter(x, y, sigma)
+%
+% Description:
+%   Calculates guassian interpolation filter for given (x,y)  and sigma.
+%
+% Parameters:
+%   x:      x coordinate to calculate gaussian
+%   y:      y coordinate to calculate gaussian
+%   sigma:  sigma value for gaussian
+%
+% Output:
+%   h = calculated gaussian value
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function h = gaussian_filter(x, y, sigma)
+    h = (1 / (2 * pi * sigma*sigma )) * (exp(-(x*x + y*y) / (2*sigma*sigma)));
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   generate1D(S, minVal, maxVal)
+%
+% Description:
+%   Generates a 1D array with values from minVal to maxVal
+%
+% Parameters:
+%   S:          array size
+%   minVal:     minimum value in array
+%   maxVal:     maximum value in array
+%
+% Output:
+%   h:          random 1D array
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function h = generate1D(S,minVal,maxVal)
+    h = zeros(S);
+    for s = 1:S    
+       h(s) = minVal + rand()*(maxVal-minVal);
+    end
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   generate2D(M, N, minVal, maxVal)
+%
+% Description:
+%   Generates a 2D array with values from minVal to maxVal
+%
+% Parameters:
+%   M:          number of rows
+%   N:          number of columns
+%   minVal:     minimum value in array
+%   maxVal:     maximum value in array
+%
+% Output:
+%   h:          random 2D array
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function f = generate2D(M,N,minVal,maxVal)
+    f = zeros(M,N);
+    for m = 1:M         
+        for n = 1:N
+           f(m,n) = minVal + rand()*(maxVal-minVal);
+        end
+    end
+end
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function name:   
+%   generate4D(M, N, minVal, maxVal)
+%
+% Description:
+%   Generates a 2D array with values from minVal to maxVal
+%
+% Parameters:
+%   M:          number of rows
+%   N:          number of columns
+%   minVal:     minimum value in array
+%   maxVal:     maximum value in array
+%
+% Output:
+%   h:          random 4D array
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+function h = generate4D(M,N,minVal,maxVal)
+    h = zeros(M,N,M,N);
+    % generate random values for h[u][v][m][n]
+    for u = 1:M         
+        for v = 1:N
+            for m = 1:M
+                for n = 1:N
+                    h(u,v,m,n)= minVal + rand()*(maxVal-minVal);
+                end
+            end
+        end
+    end
+end
 
 
 
