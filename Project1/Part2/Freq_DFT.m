@@ -27,8 +27,8 @@ function G = Freq_DFT(f)
             sum = 0.0;
             for n = 1:N
                 theta = -2*pi*(v*n/N);
-                 sum = sum + f(m,n) * exp(1j * theta);
-%                 sum = sum + f(m,n) * (cos(theta) + 1j*sin(theta));
+                sum = sum + f(m,n) * exp(1j * theta);
+%               sum = sum + f(m,n) * (cos(theta) + 1j*sin(theta));
             end
             F1(m,v) = sum * (1/N);
         end
@@ -41,8 +41,7 @@ function G = Freq_DFT(f)
             for m = 1:M
                 theta = -2*pi*(u*m/M);
                 sum = sum + F1(m,v) * exp(1j * theta);
-                
-%                 sum = sum + F1(m,v) * (cos(theta) + 1j*sin(theta));
+%               sum = sum + F1(m,v) * (cos(theta) + 1j*sin(theta));
             end
             F(u,v) = sum * (1/M);
         end

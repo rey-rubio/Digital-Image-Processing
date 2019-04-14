@@ -4,7 +4,7 @@
 %   convolution_linear_transform(f, h)
 %
 % Description:
-%   Computes the convolution l (linear shift-invariant) transform:
+%   Computes the circular convolution  (linear shift-invariant) transform
 %
 % Parameters:
 %   f:       f[m][n] input image
